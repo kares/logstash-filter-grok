@@ -2,24 +2,25 @@
 #
 #   `mkdir -p .github/workflows && cp ci/.github/*.yml .github/workflows/`
 #
-name: Test Unit
+name: Test Unit (SNAPSHOT)
 
-on: [push, pull_request]
+on: [push] # only test against SNAPSHOT ES versions on pushes (not on PRs)
 
 jobs:
 
   test:
-    name: Elastic Stack ${{ matrix.es-version }} on ${{ matrix.os }}
+    name: Elastic Stack ${{ matrix.es-version }}-SNAPSHOT on ${{ matrix.os }}
 
     strategy:
       matrix:
-        es-version: [6.x, 7.x]
+        es-version: [7.x, 8.x]
         os: [ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
     env:
       ELASTIC_STACK_VERSION: ${{ matrix.es-version }}
+      SNAPSHOT: true
 
     steps:
       - uses: actions/checkout@v1
