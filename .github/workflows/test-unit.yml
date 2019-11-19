@@ -1,0 +1,30 @@
+name: Test Unit
+
+on: [push, pull_request]
+
+jobs:
+
+  test:
+    name: Test using Elastic Stack ${{ matrix.es-version }} on ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        es-version: [6.x, 7.x]
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      ELASTIC_STACK_VERSION: ${{ matrix.es-version }}
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Initialize Git submodules
+        run: git submodule update --init --recursive
+
+      - name: Build the Docker image
+        run: ci/unit/docker-setup.sh
+
+      - name: Run tests within Docker image
+        run: docker-compose -f ci/unit/docker-compose.yml up --exit-code-from logstash
