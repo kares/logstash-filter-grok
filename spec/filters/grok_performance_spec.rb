@@ -1,9 +1,12 @@
 # encoding: utf-8
 require_relative "../spec_helper"
-require "rspec-benchmark"
 
+begin
+  require "rspec-benchmark"
+rescue LoadError # due testing against LS 5.x
+end
 RSpec.configure do |config|
-  config.include RSpec::Benchmark::Matchers
+  config.include RSpec::Benchmark::Matchers if defined? RSpec::Benchmark::Matchers
 end
 
 require "logstash/filters/grok"
