@@ -1,0 +1,31 @@
+
+name: Test Performance
+
+on: [push, pull_request]
+
+jobs:
+
+  test:
+    name: Elastic Stack ${{ matrix.es-version }} on ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        es-version: [7.x]
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      ELASTIC_STACK_VERSION: ${{ matrix.es-version }}
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Initialize Git submodules
+        run: git submodule update --init --recursive
+
+      - name: Build the Docker image
+        run: ci/performance/docker-setup.sh
+
+      - name: Run tests within Docker image
+        run: ci/performance/docker-run.sh
