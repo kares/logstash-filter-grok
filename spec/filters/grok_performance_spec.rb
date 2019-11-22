@@ -85,7 +85,7 @@ describe LogStash::Filters::Grok do
       no_timeout_pipeline = new_pipeline_from_string(no_timeout_config)
       no_timeout_duration = measure { no_timeout_pipeline.run } # warmup
       puts "filters/grok(timeout => 0) warmed up in #{no_timeout_duration}"
-
+      gc!
       no_timeout_durations = Array.new(3).map do
         duration = measure { no_timeout_pipeline.run }
         puts "filters/grok(timeout => 0) took #{duration}"
@@ -99,6 +99,7 @@ describe LogStash::Filters::Grok do
       expected_duration = avg(no_timeout_durations)
       expected_duration += (expected_duration / 100) * ACCEPTED_TIMEOUT_DEGRADATION
       puts "expected_duration #{expected_duration}"
+      gc!
       expect do
         duration = measure { timeout_pipeline.run }
         puts "filters/grok(timeout_scope => event) took #{duration}"
@@ -118,6 +119,10 @@ describe LogStash::Filters::Grok do
 
   def avg(ary)
     ary.inject(0) { |m, i| m + i } / ary.size.to_f
+  end
+
+  def gc!
+    2.times { JRuby.gc }
   end
 
 end
