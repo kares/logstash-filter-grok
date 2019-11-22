@@ -16,7 +16,13 @@ describe LogStash::Filters::Grok do
   describe "base-line performance", :performance => true do
 
     EVENT_COUNT = 300_000
-    EXPECTED_MIN_RATE = 10_000
+    EXPECTED_MIN_RATE = 15_000 # per second
+    # NOTE: based on Travis CI (docker) numbers :
+    # logstash_1_d010d1d29244 | LogStash::Filters::Grok
+    # logstash_1_d010d1d29244 |   base-line performance
+    # logstash_1_d010d1d29244 | filters/grok parse rate: 14464/sec, elapsed: 20.740866999999998s
+    # logstash_1_d010d1d29244 | filters/grok parse rate: 29957/sec, elapsed: 10.014199s
+    # logstash_1_d010d1d29244 | filters/grok parse rate: 32932/sec, elapsed: 9.109601999999999s
 
     config <<-CONFIG
       input {
@@ -42,7 +48,7 @@ describe LogStash::Filters::Grok do
         pipeline.run
         duration = (Time.now - start)
         puts "filters/grok parse rate: #{"%02.0f/sec" % (EVENT_COUNT / duration)}, elapsed: #{duration}s"
-      end.to perform_under(max_duration).sec.warmup(1).times.sample(3).times
+      end.to perform_under(max_duration).warmup(1).sample(2).times
     end
 
   end
