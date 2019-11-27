@@ -48,8 +48,8 @@ describe LogStash::Filters::Grok do
 
   describe "timeout", :performance => true do
 
-    ACCEPTED_TIMEOUT_DEGRADATION = 10 # in % (compared to timeout-less run)
-    # NOTE: usually bellow 5% on average -> we're expecting every run to be < (+ given%)
+    ACCEPTED_TIMEOUT_DEGRADATION = 60 # in % (compared to timeout-less run)
+    # TODO: with more real-world (pipeline) setup this usually gets bellow 10% on average
 
     MATCH_PATTERNS = {
       "message" => [
@@ -61,10 +61,13 @@ describe LogStash::Filters::Grok do
 
     SAMPLE_MESSAGE = "Mar 16 00:01:25 evita postfix/smtpd[1713]: connect from aaaaaaaa.aaaaaa.net[111.111.11.1]".freeze
 
+    TIMEOUT_MILLIS = 5_000
+
     let(:config_wout_timeout) do
       {
         'match' => MATCH_PATTERNS,
-        'timeout_millis' => 0   # 0 - disabled timeout
+        'timeout_scope' => "event",
+        'timeout_millis' => 0 # 0 - disabled timeout
       }
     end
 
@@ -72,47 +75,51 @@ describe LogStash::Filters::Grok do
       {
         'match' => MATCH_PATTERNS,
         'timeout_scope' => "event",
-        'timeout_millis' => 10_000
+        'timeout_millis' => TIMEOUT_MILLIS
       }
     end
+
+    SAMPLE_COUNT = 2
 
     it "has less than #{ACCEPTED_TIMEOUT_DEGRADATION}% overhead" do
       filter_wout_timeout = LogStash::Filters::Grok.new(config_wout_timeout).tap(&:register)
       wout_timeout_duration = do_sample_filter(filter_wout_timeout) # warmup
       puts "filters/grok(timeout => 0) warmed up in #{wout_timeout_duration}"
-      gc!
-      no_timeout_durations = Array.new(3).map do
+      before_sample!
+      no_timeout_durations = Array.new(SAMPLE_COUNT).map do
         duration = do_sample_filter(filter_wout_timeout)
         puts "filters/grok(timeout => 0) took #{duration}"
         duration
       end
 
+      expected_duration = avg(no_timeout_durations)
+      expected_duration += (expected_duration / 100) * ACCEPTED_TIMEOUT_DEGRADATION
+      puts "expected_duration #{expected_duration}"
+
       filter_with_timeout = LogStash::Filters::Grok.new(config_with_timeout).tap(&:register)
       with_timeout_duration = do_sample_filter(filter_with_timeout) # warmup
       puts "filters/grok(timeout_scope => event) warmed up in #{with_timeout_duration}"
 
-      expected_duration = avg(no_timeout_durations)
-      expected_duration += (expected_duration / 100) * ACCEPTED_TIMEOUT_DEGRADATION
-      puts "expected_duration #{expected_duration}"
-      gc!
+      before_sample!
       expect do
         duration = do_sample_filter(filter_with_timeout)
         puts "filters/grok(timeout_scope => event) took #{duration}"
         duration
-      end.to perform_under(expected_duration).sample(3).times
+      end.to perform_under(expected_duration).sample(SAMPLE_COUNT).times
     end
 
     @private
 
     def do_sample_filter(filter)
+      sample_event = { "message" => SAMPLE_MESSAGE }
       measure do
         for _ in (1..EVENT_COUNT) do # EVENT_COUNT.times without the block cost
-          filter.filter(sample_event)
+          filter.filter(LogStash::Event.new(sample_event))
         end
       end
     end
 
-    def sample_event
+    def sample_event(hash)
       LogStash::Event.new("message" => SAMPLE_MESSAGE)
     end
 
@@ -130,8 +137,14 @@ describe LogStash::Filters::Grok do
     ary.inject(0) { |m, i| m + i } / ary.size.to_f
   end
 
-  def gc!
+  def before_sample!
     2.times { JRuby.gc }
+    sleep TIMEOUT_MILLIS / 1000
+  end
+
+  def sleep(seconds)
+    puts "sleeping for #{seconds} seconds (redundant - potential timeout propagation)"
+    Kernel.sleep(seconds)
   end
 
 end
