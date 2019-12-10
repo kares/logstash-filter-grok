@@ -2,16 +2,13 @@ source 'https://rubygems.org'
 
 gemspec
 
-logstash_path = ENV["LOGSTASH_PATH"] || "../../logstash"
-use_logstash_source = ENV["LOGSTASH_SOURCE"] && ENV["LOGSTASH_SOURCE"].to_s == "1"
-
-if Dir.exist?(logstash_path) && use_logstash_source
-  gem 'logstash-core', :path => "#{logstash_path}/logstash-core"
-  gem 'logstash-core-plugin-api', :path => "#{logstash_path}/logstash-core-plugin-api"
+logstash_path = ENV["LOGSTASH_PATH"] || ENV["LS_HOME"] || "../../logstash"
+unless Dir.exist?(logstash_path)
+  warn "could not find LS repository at: #{logstash_path.inspect} try export LOGSTASH_PATH=..."
 end
 
-group :test do
-  gem 'rspec-benchmark', :require => false if RUBY_VERSION >= '2.3'
-  gem 'logstash-input-generator', :require => false
-  gem 'logstash-output-null', :require => false
-end
+gem 'logstash-core', path: "#{logstash_path}/logstash-core"
+# NOTE: need to keep this till all plugin dependencies get updated
+# (as a plugin's gemspec tends to list other plugins as dependencies)
+gem 'logstash-core-plugin-api', path: "#{logstash_path}/logstash-core-plugin-api"
+
