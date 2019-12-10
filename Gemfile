@@ -12,3 +12,5 @@ gem 'logstash-core', path: "#{logstash_path}/logstash-core"
 # (as a plugin's gemspec tends to list other plugins as dependencies)
 gem 'logstash-core-plugin-api', path: "#{logstash_path}/logstash-core-plugin-api"
 
+# gem 'logstash-devutils', path: '../logstash-devutils'
+gem 'logstash-devutils', github: 'kares/logstash-devutils', branch: 'redo-java-pipeline'
